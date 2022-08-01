@@ -1,7 +1,6 @@
 package com.project.spencerkunkel.photogallery;
 
 import android.os.Bundle;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
@@ -24,6 +24,7 @@ public class PhotoGalleryFragment extends Fragment {
 
     private RecyclerView photoRecyclerView;
     private PhotoGalleryViewModel photoGalleryViewModel;
+    private int lastItemPosition;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -59,7 +60,10 @@ public class PhotoGalleryFragment extends Fragment {
 
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                LinearLayoutManager layout = (LinearLayoutManager) recyclerView.getLayoutManager();
                 if(!recyclerView.canScrollVertically(1)){
+                    assert layout != null;
+                    lastItemPosition = layout.findLastVisibleItemPosition();
                     photoGalleryViewModel.getNextPage();
                 }
             }
@@ -70,7 +74,15 @@ public class PhotoGalleryFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        photoGalleryViewModel.getGalleryItemLiveData().observe(this.getViewLifecycleOwner(), galleryItems -> photoRecyclerView.setAdapter(new PhotoAdapter(galleryItems)));
+        photoGalleryViewModel.getGalleryItemLiveData().observe(this.getViewLifecycleOwner(), galleryItems -> {
+            if(galleryItems.size() > 100){
+                photoRecyclerView.setAdapter(new PhotoAdapter(galleryItems));
+                photoRecyclerView.scrollToPosition(lastItemPosition);
+            }
+            else{
+                photoRecyclerView.setAdapter(new PhotoAdapter(galleryItems));
+            }
+        });
     }
 
     private static class PhotoHolder extends RecyclerView.ViewHolder {
