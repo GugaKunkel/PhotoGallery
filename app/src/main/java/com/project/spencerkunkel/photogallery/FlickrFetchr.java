@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.ViewModel;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -28,18 +29,20 @@ public class FlickrFetchr {
     private static final String TAG = "FlickrFetchr";
 
     private final FlickrApi flickrApi;
+    private PhotoGalleryViewModel viewModel;
 
-    public FlickrFetchr() {
+    public FlickrFetchr(PhotoGalleryViewModel fetchrClass) {
         Gson gson = new GsonBuilder().registerTypeAdapter(PhotoResponse.class, new PhotoDeserializer()).create();
         Retrofit retrofit = new Retrofit.Builder().baseUrl("https://api.flickr.com/")
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build();
         flickrApi = retrofit.create(FlickrApi.class);
+        this.viewModel = fetchrClass;
     }
 
-    public LiveData<List<GalleryItem>> fetchPhotos(){
+    public MutableLiveData<List<GalleryItem>> fetchPhotos(int page){
         MutableLiveData<List<GalleryItem>> responseLiveData = new MutableLiveData<>();
-        Call<FlickrResponse> flickrRequest = flickrApi.fetchPhotos();
+        Call<FlickrResponse> flickrRequest = flickrApi.fetchPhotos(page);
 
         flickrRequest.enqueue(new Callback<FlickrResponse>() {
             @RequiresApi(api = Build.VERSION_CODES.N)
@@ -55,7 +58,7 @@ public class FlickrFetchr {
                         filteredList.add(item);
                     }
                 }
-                responseLiveData.setValue(filteredList);
+                viewModel.addItems(filteredList);
             }
 
             @Override

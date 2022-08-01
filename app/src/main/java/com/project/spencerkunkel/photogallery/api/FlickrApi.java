@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import retrofit2.Call;
 import retrofit2.http.GET;
+import retrofit2.http.Query;
 
 public interface FlickrApi {
     @GET("services/rest/?method=flickr.interestingness.getList" +
@@ -12,5 +13,5 @@ public interface FlickrApi {
             "&nojsoncallback=1" +
             "&extras=url_s")
     @NonNull
-    Call<FlickrResponse> fetchPhotos();
+    Call<FlickrResponse> fetchPhotos(@Query("page") int page);
 }

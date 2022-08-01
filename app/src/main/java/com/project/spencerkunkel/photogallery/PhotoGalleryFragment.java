@@ -1,6 +1,7 @@
 package com.project.spencerkunkel.photogallery;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,7 +17,6 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
-import java.util.Objects;
 
 public class PhotoGalleryFragment extends Fragment {
 
@@ -43,11 +43,25 @@ public class PhotoGalleryFragment extends Fragment {
         photoRecyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
             public void onGlobalLayout() {
-                float columnWidthInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 140, getActivity().getResources().getDisplayMetrics());
+                float columnWidthInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 140, requireActivity().getResources().getDisplayMetrics());
                 int width = photoRecyclerView.getWidth();
                 int columnNumber = Math.round(width / columnWidthInPixels);
                 photoRecyclerView.setLayoutManager(new GridLayoutManager(requireContext(), columnNumber));
                 photoRecyclerView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+            }
+        });
+
+        photoRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+            }
+
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                if(!recyclerView.canScrollVertically(1)){
+                    photoGalleryViewModel.getNextPage();
+                }
             }
         });
         return view;
@@ -56,8 +70,7 @@ public class PhotoGalleryFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        photoGalleryViewModel.getGalleryItemLiveData().observe(this.getViewLifecycleOwner(),
-                galleryItems -> photoRecyclerView.setAdapter(new PhotoAdapter(galleryItems)));
+        photoGalleryViewModel.getGalleryItemLiveData().observe(this.getViewLifecycleOwner(), galleryItems -> photoRecyclerView.setAdapter(new PhotoAdapter(galleryItems)));
     }
 
     private static class PhotoHolder extends RecyclerView.ViewHolder {
