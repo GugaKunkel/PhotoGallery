@@ -18,5 +18,5 @@ public interface FlickrApi {
     Call<FlickrResponse> fetchPhotos(@Query("page") int page);
 
     @GET
-    Call<ResponseBody> fetchUrlBytes(@Url String url);
+    Call<ResponseBody> fetchUrlBytes(@NonNull @Url String url);
 }

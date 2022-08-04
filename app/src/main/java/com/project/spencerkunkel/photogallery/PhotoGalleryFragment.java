@@ -84,6 +84,7 @@ public class PhotoGalleryFragment extends Fragment {
             }
         });
         getViewLifecycleOwner().getLifecycle().addObserver(thumbnailDownloader.getViewLifecycleObserver());
+        //getViewLifecycleOwnerLiveData().observe(getViewLifecycleOwner(), lifecycleOwner -> lifecycleOwner.getLifecycle().addObserver(thumbnailDownloader.getViewLifecycleObserver()));
         return view;
     }
 

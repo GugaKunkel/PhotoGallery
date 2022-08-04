@@ -110,9 +110,15 @@ public class ThumbnailDownloader<T> extends HandlerThread{
         if(requestMap.get(target) != null){
             url = requestMap.get(target);
         }
+        else{
+            return;
+        }
         Bitmap bitmap = null;
         if(flickrFetchr.fetchPhoto(url) != null){
             bitmap = flickrFetchr.fetchPhoto(url);
+        }
+        else{
+            return;
         }
 
         String finalUrl = url;
