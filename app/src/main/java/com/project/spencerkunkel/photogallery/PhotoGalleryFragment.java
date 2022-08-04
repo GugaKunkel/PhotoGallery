@@ -1,15 +1,20 @@
 package com.project.spencerkunkel.photogallery;
 
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
-import android.widget.TextView;
+import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -24,15 +29,25 @@ public class PhotoGalleryFragment extends Fragment {
 
     private RecyclerView photoRecyclerView;
     private PhotoGalleryViewModel photoGalleryViewModel;
+    private ThumbnailDownloader<PhotoHolder> thumbnailDownloader;
     private int lastItemPosition;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
     }
 
+    @SuppressWarnings("deprecation")
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setRetainInstance(true);
         photoGalleryViewModel = new ViewModelProvider(this).get(PhotoGalleryViewModel.class);
+        Handler responseHandler = new Handler();
+        thumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
+        thumbnailDownloader.setThumbnailDownloaderListener((ThumbnailDownloader.ThumbnailDownloaderListener<PhotoHolder>) (photoHolder, bitmap) -> {
+            Drawable drawable = new BitmapDrawable(getResources(), bitmap);
+            photoHolder.bind(drawable);
+        });
+        getLifecycle().addObserver(thumbnailDownloader.getFragmentLifecycleObserver());
     }
 
     @Override
@@ -68,6 +83,7 @@ public class PhotoGalleryFragment extends Fragment {
                 }
             }
         });
+        getViewLifecycleOwner().getLifecycle().addObserver(thumbnailDownloader.getViewLifecycleObserver());
         return view;
     }
 
@@ -85,21 +101,33 @@ public class PhotoGalleryFragment extends Fragment {
         });
     }
 
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        getViewLifecycleOwner().getLifecycle().removeObserver(thumbnailDownloader.getViewLifecycleObserver());
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        getLifecycle().removeObserver(thumbnailDownloader.getFragmentLifecycleObserver());
+    }
+
     private static class PhotoHolder extends RecyclerView.ViewHolder {
 
-        private TextView title;
+        private final ImageView image;
 
-        public PhotoHolder(@NonNull TextView itemTextView) {
-            super(itemTextView);
-            this.title = itemTextView;
+        public PhotoHolder(@NonNull ImageView itemImage) {
+            super(itemImage);
+            this.image = itemImage;
         }
 
-        public void bind(String title) {
-            this.title.setText(title);
+        public void bind(Drawable image) {
+            this.image.setImageDrawable(image);
         }
     }
 
-    private static final class PhotoAdapter extends RecyclerView.Adapter<PhotoHolder> {
+    private final class PhotoAdapter extends RecyclerView.Adapter<PhotoHolder> {
 
         private final List<GalleryItem> galleryItems;
 
@@ -110,14 +138,19 @@ public class PhotoGalleryFragment extends Fragment {
         @NonNull
         @Override
         public PhotoHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            TextView textView = new TextView(parent.getContext());
-            return new PhotoHolder(textView);
+            ImageView view = (ImageView) PhotoGalleryFragment.this.getLayoutInflater().inflate(R.layout.list_item_gallery, parent, false);
+            return new PhotoHolder(view);
         }
 
         @Override
         public void onBindViewHolder(@NonNull PhotoHolder holder, int position) {
             GalleryItem galleryItem = galleryItems.get(position);
-            holder.bind(galleryItem.getTitle());
+            thumbnailDownloader.queueThumbnail(holder, galleryItem.getUrl());
+            Drawable placeholder = ContextCompat.getDrawable(requireContext(), R.drawable.bill_up_close);
+            if(placeholder == null){
+                placeholder = new ColorDrawable();
+            }
+            holder.bind(placeholder);
         }
 
         @Override

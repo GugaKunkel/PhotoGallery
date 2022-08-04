@@ -12,7 +12,6 @@ public class PhotoDeserializer implements com.google.gson.JsonDeserializer<Photo
     @Override
     public PhotoResponse deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         JsonObject jsonObject = json != null ? json.getAsJsonObject() : null;
-        PhotoResponse photos = new Gson().fromJson(jsonObject, PhotoResponse.class);
-        return photos;
+        return new Gson().fromJson(jsonObject, PhotoResponse.class);
     }
 }

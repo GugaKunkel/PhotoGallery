@@ -2,9 +2,11 @@ package com.project.spencerkunkel.photogallery.api;
 
 import androidx.annotation.NonNull;
 
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Query;
+import retrofit2.http.Url;
 
 public interface FlickrApi {
     @GET("services/rest/?method=flickr.interestingness.getList" +
@@ -14,4 +16,7 @@ public interface FlickrApi {
             "&extras=url_s")
     @NonNull
     Call<FlickrResponse> fetchPhotos(@Query("page") int page);
+
+    @GET
+    Call<ResponseBody> fetchUrlBytes(@Url String url);
 }
