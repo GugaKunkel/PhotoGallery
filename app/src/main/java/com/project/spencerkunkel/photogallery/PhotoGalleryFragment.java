@@ -31,6 +31,7 @@ public class PhotoGalleryFragment extends Fragment {
     private PhotoGalleryViewModel photoGalleryViewModel;
     private ThumbnailDownloader<PhotoHolder> thumbnailDownloader;
     private int lastItemPosition;
+    private PhotoAdapter adapter;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -78,7 +79,7 @@ public class PhotoGalleryFragment extends Fragment {
                 LinearLayoutManager layout = (LinearLayoutManager) recyclerView.getLayoutManager();
                 if(!recyclerView.canScrollVertically(1)){
                     assert layout != null;
-                    lastItemPosition = layout.findLastVisibleItemPosition();
+                    lastItemPosition = layout.findFirstVisibleItemPosition();
                     photoGalleryViewModel.getNextPage();
                 }
             }
@@ -93,11 +94,12 @@ public class PhotoGalleryFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         photoGalleryViewModel.getGalleryItemLiveData().observe(this.getViewLifecycleOwner(), galleryItems -> {
             if(galleryItems.size() > 100){
-                photoRecyclerView.setAdapter(new PhotoAdapter(galleryItems));
-                photoRecyclerView.scrollToPosition(lastItemPosition);
+                adapter.addItems(galleryItems);
+                //photoRecyclerView.scrollToPosition(lastItemPosition);
             }
             else{
-                photoRecyclerView.setAdapter(new PhotoAdapter(galleryItems));
+                adapter = new PhotoAdapter(galleryItems);
+                photoRecyclerView.setAdapter(adapter);
             }
         });
     }
@@ -152,6 +154,11 @@ public class PhotoGalleryFragment extends Fragment {
                 placeholder = new ColorDrawable();
             }
             holder.bind(placeholder);
+        }
+
+        public void addItems(List<GalleryItem> items){
+            this.galleryItems.addAll(items);
+            notifyDataSetChanged();
         }
 
         @Override
