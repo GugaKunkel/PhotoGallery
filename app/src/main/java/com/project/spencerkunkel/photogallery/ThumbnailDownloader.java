@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
+import android.util.LruCache;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.Lifecycle;
@@ -27,6 +28,7 @@ public class ThumbnailDownloader<T> extends HandlerThread{
     private ThumbnailDownloaderListener<T> thumbnailDownloaderListener;
     private final LifecycleObserver fragmentLifecycleObserver;
     private final LifecycleObserver viewLifecycleObserver;
+    private LruCache<String, Bitmap> cache;
 
     public final LifecycleObserver getFragmentLifecycleObserver() {
         return this.fragmentLifecycleObserver;
@@ -50,6 +52,13 @@ public class ThumbnailDownloader<T> extends HandlerThread{
         this.responseHandler = responseHandler;
         this.requestMap = new ConcurrentHashMap<>();
         this.flickrFetchr = new FlickrFetchr();
+        int maxMemory = (int)(Runtime.getRuntime().maxMemory() /1024);
+        cache = new LruCache<String, Bitmap>(maxMemory){
+            protected int sizeOf(String key, Bitmap value) {
+                return value.getByteCount() /1024;
+            }
+        };
+
         //noinspection deprecation
         this.fragmentLifecycleObserver = new LifecycleObserver() {
             @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
@@ -93,7 +102,7 @@ public class ThumbnailDownloader<T> extends HandlerThread{
                 if(msg.what == MESSAGE_DOWNLOAD){
                     T target = (T) msg.obj;
                     Log.i(TAG, "Got a request for URL:" + requestMap.get(target));
-                    ThumbnailDownloader.this.handleRequest(target);
+                    handleRequest(target);
                 }
             }
         };
@@ -106,19 +115,27 @@ public class ThumbnailDownloader<T> extends HandlerThread{
     }
 
     private void handleRequest(T target){
-        String url = null;
+        String url;
         if(requestMap.get(target) != null){
             url = requestMap.get(target);
         }
         else{
             return;
         }
-        Bitmap bitmap = null;
-        if(flickrFetchr.fetchPhoto(url) != null){
-            bitmap = flickrFetchr.fetchPhoto(url);
+        Bitmap bitmap;
+        if (cache.get(url) != null) {
+            bitmap = cache.get(url);
         }
         else{
-            return;
+            if(flickrFetchr.fetchPhoto(url) != null){
+                bitmap = flickrFetchr.fetchPhoto(url);
+                synchronized (cache) {
+                    cache.put(url, bitmap);
+                }
+            }
+            else{
+                return;
+            }
         }
 
         String finalUrl = url;
