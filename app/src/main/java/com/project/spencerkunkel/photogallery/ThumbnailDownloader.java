@@ -28,7 +28,7 @@ public class ThumbnailDownloader<T> extends HandlerThread{
     private ThumbnailDownloaderListener<T> thumbnailDownloaderListener;
     private final LifecycleObserver fragmentLifecycleObserver;
     private final LifecycleObserver viewLifecycleObserver;
-    private LruCache<String, Bitmap> cache;
+    private final LruCache<String, Bitmap> cache;
 
     public final LifecycleObserver getFragmentLifecycleObserver() {
         return this.fragmentLifecycleObserver;
@@ -92,6 +92,7 @@ public class ThumbnailDownloader<T> extends HandlerThread{
     }
 
 
+    @SuppressWarnings("deprecation")
     @SuppressLint("HandlerLeak")
     @Override
     protected void onLooperPrepared() {
@@ -110,7 +111,10 @@ public class ThumbnailDownloader<T> extends HandlerThread{
 
     public void queueThumbnail(T target, String url){
         Log.i(TAG,"Got a URL: " + url);
-        requestMap.put(target, url);
+        if(url == null){
+            requestMap.remove(target);
+        }
+        requestMap.put(target, Objects.requireNonNull(url));
         requestHandler.obtainMessage(MESSAGE_DOWNLOAD, target).sendToTarget();
     }
 

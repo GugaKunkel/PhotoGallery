@@ -1,5 +1,6 @@
 package com.project.spencerkunkel.photogallery;
 
+import android.annotation.SuppressLint;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -30,7 +31,6 @@ public class PhotoGalleryFragment extends Fragment {
     private RecyclerView photoRecyclerView;
     private PhotoGalleryViewModel photoGalleryViewModel;
     private ThumbnailDownloader<PhotoHolder> thumbnailDownloader;
-    private int lastItemPosition;
     private PhotoAdapter adapter;
 
     public static PhotoGalleryFragment newInstance() {
@@ -79,7 +79,6 @@ public class PhotoGalleryFragment extends Fragment {
                 LinearLayoutManager layout = (LinearLayoutManager) recyclerView.getLayoutManager();
                 if(!recyclerView.canScrollVertically(1)){
                     assert layout != null;
-                    lastItemPosition = layout.findFirstVisibleItemPosition();
                     photoGalleryViewModel.getNextPage();
                 }
             }
@@ -156,6 +155,7 @@ public class PhotoGalleryFragment extends Fragment {
             holder.bind(placeholder);
         }
 
+        @SuppressLint("NotifyDataSetChanged")
         public void addItems(List<GalleryItem> items){
             this.galleryItems.addAll(items);
             notifyDataSetChanged();
