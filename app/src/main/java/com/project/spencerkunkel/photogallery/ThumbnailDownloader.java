@@ -152,4 +152,8 @@ public class ThumbnailDownloader<T> extends HandlerThread{
             thumbnailDownloaderListener.onThumbnailDownloaded(target, finalBitmap);
         });
     }
+
+    public LruCache<String, Bitmap> getCache() {
+        return cache;
+    }
 }

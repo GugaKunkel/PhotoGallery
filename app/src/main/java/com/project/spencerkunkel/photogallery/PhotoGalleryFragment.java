@@ -1,11 +1,12 @@
 package com.project.spencerkunkel.photogallery;
 
 import android.annotation.SuppressLint;
+import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -22,7 +23,9 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class PhotoGalleryFragment extends Fragment {
 
@@ -30,8 +33,11 @@ public class PhotoGalleryFragment extends Fragment {
 
     private RecyclerView photoRecyclerView;
     private PhotoGalleryViewModel photoGalleryViewModel;
-    private ThumbnailDownloader<PhotoHolder> thumbnailDownloader;
+    private ThumbnailDownloader<Integer> thumbnailDownloader;
     private PhotoAdapter adapter;
+    int firstItemPosition;
+    int lastItemPosition;
+    List<GalleryItem> items = new ArrayList<>();
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -44,10 +50,7 @@ public class PhotoGalleryFragment extends Fragment {
         photoGalleryViewModel = new ViewModelProvider(this).get(PhotoGalleryViewModel.class);
         Handler responseHandler = new Handler();
         thumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
-        thumbnailDownloader.setThumbnailDownloaderListener((ThumbnailDownloader.ThumbnailDownloaderListener<PhotoHolder>) (photoHolder, bitmap) -> {
-            Drawable drawable = new BitmapDrawable(getResources(), bitmap);
-            photoHolder.bind(drawable);
-        });
+        thumbnailDownloader.setThumbnailDownloaderListener((position, bitmap) -> Objects.requireNonNull(photoRecyclerView.getAdapter()).notifyItemChanged(position));
         getLifecycle().addObserver(thumbnailDownloader.getFragmentLifecycleObserver());
     }
 
@@ -77,8 +80,26 @@ public class PhotoGalleryFragment extends Fragment {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 LinearLayoutManager layout = (LinearLayoutManager) recyclerView.getLayoutManager();
+                assert layout != null;
+                int lastVisibleItem = layout.findLastVisibleItemPosition();
+                int firstVisibleItem = layout.findFirstVisibleItemPosition();
+                if (lastItemPosition != lastVisibleItem || firstItemPosition != firstVisibleItem) {
+                    Log.d(TAG,"Showing item " + firstVisibleItem +" to " + lastVisibleItem);
+                    lastItemPosition  = lastVisibleItem;
+                    firstItemPosition = firstVisibleItem;
+                    int begin = Math.max(firstVisibleItem - 10, 0);
+                    int end = Math.min(lastVisibleItem + 12, items.size() - 1);
+                    for (@SuppressWarnings("WrapperTypeMayBePrimitive") Integer position = begin; position <= end; position++){
+                        String url = items.get(position).getUrl();
+                        if(thumbnailDownloader.getCache().get(url)== null) {
+                            Log.d(TAG,"Requesting Download at position: "+ position);
+                            thumbnailDownloader.queueThumbnail(position, url);
+                        }
+
+                    }
+                }
+
                 if(!recyclerView.canScrollVertically(1)){
-                    assert layout != null;
                     photoGalleryViewModel.getNextPage();
                 }
             }
@@ -94,12 +115,13 @@ public class PhotoGalleryFragment extends Fragment {
         photoGalleryViewModel.getGalleryItemLiveData().observe(this.getViewLifecycleOwner(), galleryItems -> {
             if(galleryItems.size() > 100){
                 adapter.addItems(galleryItems);
-                //photoRecyclerView.scrollToPosition(lastItemPosition);
             }
             else{
                 adapter = new PhotoAdapter(galleryItems);
                 photoRecyclerView.setAdapter(adapter);
             }
+            items.clear();
+            items.addAll(galleryItems);
         });
     }
 
@@ -147,12 +169,16 @@ public class PhotoGalleryFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull PhotoHolder holder, int position) {
             GalleryItem galleryItem = galleryItems.get(position);
-            thumbnailDownloader.queueThumbnail(holder, galleryItem.getUrl());
-            Drawable placeholder = ContextCompat.getDrawable(requireContext(), R.drawable.bill_up_close);
-            if(placeholder == null){
-                placeholder = new ColorDrawable();
+            String url = galleryItem.getUrl();
+            Bitmap bitmap = thumbnailDownloader.getCache().get(url);
+            if(bitmap == null) {
+                Drawable placeholder = ContextCompat.getDrawable(requireContext(), R.drawable.bill_up_close);
+                holder.bind(placeholder);
+                thumbnailDownloader.queueThumbnail(position,url);
+            } else {
+                Drawable drawable = new BitmapDrawable(getResources(), bitmap);
+                holder.bind(drawable);
             }
-            holder.bind(placeholder);
         }
 
         @SuppressLint("NotifyDataSetChanged")
