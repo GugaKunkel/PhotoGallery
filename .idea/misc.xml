@@ -6,6 +6,7 @@
         <entry key="app/src/main/res/layout/activity_photo_gallery.xml" value="0.2552083333333333" />
         <entry key="app/src/main/res/layout/fragment_photo_gallery.xml" value="0.2552083333333333" />
         <entry key="app/src/main/res/layout/list_item_gallery.xml" value="0.25364583333333335" />
+        <entry key="app/src/main/res/menu/fragment_photo_gallery.xml" value="0.25364583333333335" />
       </map>
     </option>
   </component>

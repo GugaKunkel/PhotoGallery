@@ -2,30 +2,36 @@ package com.project.spencerkunkel.photogallery;
 
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
+import android.util.LruCache;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
+import android.widget.SearchView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class PhotoGalleryFragment extends Fragment {
 
@@ -33,8 +39,9 @@ public class PhotoGalleryFragment extends Fragment {
 
     private RecyclerView photoRecyclerView;
     private PhotoGalleryViewModel photoGalleryViewModel;
-    private ThumbnailDownloader<Integer> thumbnailDownloader;
+    private LruCache<String, Bitmap> cache;
     private PhotoAdapter adapter;
+    String searchBarText = "";
     int firstItemPosition;
     int lastItemPosition;
     List<GalleryItem> items = new ArrayList<>();
@@ -47,11 +54,14 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
+        setHasOptionsMenu(true);
         photoGalleryViewModel = new ViewModelProvider(this).get(PhotoGalleryViewModel.class);
-        Handler responseHandler = new Handler();
-        thumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
-        thumbnailDownloader.setThumbnailDownloaderListener((position, bitmap) -> Objects.requireNonNull(photoRecyclerView.getAdapter()).notifyItemChanged(position));
-        getLifecycle().addObserver(thumbnailDownloader.getFragmentLifecycleObserver());
+        int maxMemory = (int)(Runtime.getRuntime().maxMemory() /1024);
+        cache = new LruCache<String, Bitmap>(maxMemory){
+            protected int sizeOf(String key, Bitmap value) {
+                return value.getByteCount() /1024;
+            }
+        };
     }
 
     @Override
@@ -88,33 +98,44 @@ public class PhotoGalleryFragment extends Fragment {
                     lastItemPosition  = lastVisibleItem;
                     firstItemPosition = firstVisibleItem;
                     int begin = Math.max(firstVisibleItem - 10, 0);
-                    int end = Math.min(lastVisibleItem + 12, items.size() - 1);
+                    int end = Math.min(lastVisibleItem + 21, items.size() - 1);
                     for (@SuppressWarnings("WrapperTypeMayBePrimitive") Integer position = begin; position <= end; position++){
                         String url = items.get(position).getUrl();
-                        if(thumbnailDownloader.getCache().get(url)== null) {
-                            Log.d(TAG,"Requesting Download at position: "+ position);
-                            thumbnailDownloader.queueThumbnail(position, url);
-                        }
+                        Glide.with(requireContext())
+                                .asBitmap()
+                                .load(url)
+                                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                                .into(new CustomTarget<Bitmap>() {
+                                    @Override
+                                    public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+                                        cache.put(url, resource);
+                                    }
 
+                                    @Override
+                                    public void onLoadCleared(@Nullable Drawable placeholder) { }
+                                });
                     }
                 }
-
                 if(!recyclerView.canScrollVertically(1)){
-                    photoGalleryViewModel.getNextPage();
+                    if(searchBarText.isEmpty()){
+                        photoGalleryViewModel.getNextPage();
+                    }
+                    else{
+                        photoGalleryViewModel.getNextSearchPage();
+                    }
                 }
             }
         });
-        getViewLifecycleOwner().getLifecycle().addObserver(thumbnailDownloader.getViewLifecycleObserver());
-        //getViewLifecycleOwnerLiveData().observe(getViewLifecycleOwner(), lifecycleOwner -> lifecycleOwner.getLifecycle().addObserver(thumbnailDownloader.getViewLifecycleObserver()));
         return view;
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         photoGalleryViewModel.getGalleryItemLiveData().observe(this.getViewLifecycleOwner(), galleryItems -> {
             if(galleryItems.size() > 100){
-                adapter.addItems(galleryItems);
+                adapter.notifyDataSetChanged();
             }
             else{
                 adapter = new PhotoAdapter(galleryItems);
@@ -126,15 +147,30 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        getViewLifecycleOwner().getLifecycle().removeObserver(thumbnailDownloader.getViewLifecycleObserver());
-    }
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_photo_gallery, menu);
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        getLifecycle().removeObserver(thumbnailDownloader.getFragmentLifecycleObserver());
+        MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+        SearchView searchView = (SearchView) searchItem.getActionView();
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String queryText) {
+                Log.d(TAG, "QueryTextSubmit: " + queryText);
+                photoGalleryViewModel.fetchPhotos(queryText);
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String queryText) {
+                Log.d(TAG, "QueryTextChange: " + queryText);
+                searchBarText = queryText;
+                if(queryText.isEmpty()){
+                    photoGalleryViewModel.fetchPhotos(queryText);
+                }
+                return true;
+            }
+        });
     }
 
     private static class PhotoHolder extends RecyclerView.ViewHolder {
@@ -146,8 +182,15 @@ public class PhotoGalleryFragment extends Fragment {
             this.image = itemImage;
         }
 
-        public void bind(Drawable image) {
-            this.image.setImageDrawable(image);
+        public void bindCache(Bitmap photo) {
+            image.setImageBitmap(photo);
+        }
+
+        public void bindLoad(GalleryItem galleryItem) {
+            Glide.with(image)
+                    .load(galleryItem.getUrl())
+                    .placeholder(R.drawable.bill_up_close)
+                    .into(image);
         }
     }
 
@@ -168,23 +211,13 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull PhotoHolder holder, int position) {
-            GalleryItem galleryItem = galleryItems.get(position);
-            String url = galleryItem.getUrl();
-            Bitmap bitmap = thumbnailDownloader.getCache().get(url);
-            if(bitmap == null) {
-                Drawable placeholder = ContextCompat.getDrawable(requireContext(), R.drawable.bill_up_close);
-                holder.bind(placeholder);
-                thumbnailDownloader.queueThumbnail(position,url);
-            } else {
-                Drawable drawable = new BitmapDrawable(getResources(), bitmap);
-                holder.bind(drawable);
+            Bitmap image = cache.get(galleryItems.get(position).getUrl());
+            if(image != null){
+                holder.bindCache(image);
             }
-        }
-
-        @SuppressLint("NotifyDataSetChanged")
-        public void addItems(List<GalleryItem> items){
-            this.galleryItems.addAll(items);
-            notifyDataSetChanged();
+            else{
+                holder.bindLoad(galleryItems.get(position));
+            }
         }
 
         @Override
