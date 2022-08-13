@@ -1,11 +1,11 @@
 package com.project.spencerkunkel.photogallery;
 
 import android.annotation.SuppressLint;
+import android.app.ProgressDialog;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.LruCache;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -39,11 +39,12 @@ public class PhotoGalleryFragment extends Fragment {
 
     private RecyclerView photoRecyclerView;
     private PhotoGalleryViewModel photoGalleryViewModel;
-    private LruCache<String, Bitmap> cache;
+    private ProgressDialog progressDialog;
     private PhotoAdapter adapter;
     String searchBarText = "";
     int firstItemPosition;
     int lastItemPosition;
+    boolean beenRotated = false;
     List<GalleryItem> items = new ArrayList<>();
 
     public static PhotoGalleryFragment newInstance() {
@@ -56,12 +57,10 @@ public class PhotoGalleryFragment extends Fragment {
         setRetainInstance(true);
         setHasOptionsMenu(true);
         photoGalleryViewModel = new ViewModelProvider(this).get(PhotoGalleryViewModel.class);
-        int maxMemory = (int)(Runtime.getRuntime().maxMemory() /1024);
-        cache = new LruCache<String, Bitmap>(maxMemory){
-            protected int sizeOf(String key, Bitmap value) {
-                return value.getByteCount() /1024;
-            }
-        };
+        progressDialog = new ProgressDialog(requireContext());
+        progressDialog.setTitle("Downloading photos");
+        progressDialog.setMessage("It might take a few seconds..");
+        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
     }
 
     @Override
@@ -108,7 +107,9 @@ public class PhotoGalleryFragment extends Fragment {
                                 .into(new CustomTarget<Bitmap>() {
                                     @Override
                                     public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
-                                        cache.put(url, resource);
+                                        if (!resource.isRecycled()) {
+                                            photoGalleryViewModel.getCache().put(url, resource);
+                                        }
                                     }
 
                                     @Override
@@ -117,11 +118,13 @@ public class PhotoGalleryFragment extends Fragment {
                     }
                 }
                 if(!recyclerView.canScrollVertically(1)){
-                    if(searchBarText.isEmpty()){
-                        photoGalleryViewModel.getNextPage();
-                    }
-                    else{
-                        photoGalleryViewModel.getNextSearchPage();
+                    if(items.size() > 18){
+                        if(searchBarText.isEmpty()){
+                            photoGalleryViewModel.getNextPage();
+                        }
+                        else{
+                            photoGalleryViewModel.getNextSearchPage();
+                        }
                     }
                 }
             }
@@ -134,7 +137,8 @@ public class PhotoGalleryFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         photoGalleryViewModel.getGalleryItemLiveData().observe(this.getViewLifecycleOwner(), galleryItems -> {
-            if(galleryItems.size() > 100){
+            progressDialog.dismiss();
+            if(galleryItems.size() > 100 && !beenRotated){
                 adapter.notifyDataSetChanged();
             }
             else{
@@ -143,6 +147,7 @@ public class PhotoGalleryFragment extends Fragment {
             }
             items.clear();
             items.addAll(galleryItems);
+            beenRotated = false;
         });
     }
 
@@ -157,7 +162,9 @@ public class PhotoGalleryFragment extends Fragment {
             @Override
             public boolean onQueryTextSubmit(String queryText) {
                 Log.d(TAG, "QueryTextSubmit: " + queryText);
+                progressDialog.show();
                 photoGalleryViewModel.fetchPhotos(queryText);
+                searchView.clearFocus();
                 return true;
             }
 
@@ -171,6 +178,33 @@ public class PhotoGalleryFragment extends Fragment {
                 return true;
             }
         });
+        searchView.setOnSearchClickListener(SearchView -> searchView.setQuery(photoGalleryViewModel.getSearchTerm(), false));
+        searchView.setOnFocusChangeListener((view, hasFocus) -> {
+            if (!hasFocus) {
+                searchItem.collapseActionView();
+            }
+        });
+    }
+
+
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        super.onOptionsItemSelected(item);
+        if (item.getItemId() == R.id.menu_item_clear) {
+            PhotoGalleryViewModel viewModel = this.photoGalleryViewModel;
+            if(viewModel != null){
+                viewModel.fetchPhotos("");
+            }
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        beenRotated = true;
     }
 
     private static class PhotoHolder extends RecyclerView.ViewHolder {
@@ -211,8 +245,8 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull PhotoHolder holder, int position) {
-            Bitmap image = cache.get(galleryItems.get(position).getUrl());
-            if(image != null){
+            Bitmap image = photoGalleryViewModel.getCache().get(galleryItems.get(position).getUrl());
+            if(image != null && !image.isRecycled()){
                 holder.bindCache(image);
             }
             else{
