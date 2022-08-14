@@ -24,6 +24,11 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.work.Constraints;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.NetworkType;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
@@ -32,10 +37,12 @@ import com.bumptech.glide.request.transition.Transition;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class PhotoGalleryFragment extends Fragment {
 
     private static final String TAG = "PhotoGalleryFragment";
+    private static final String POLL_WORK  = "POLL_WORK";
 
     private RecyclerView photoRecyclerView;
     private PhotoGalleryViewModel photoGalleryViewModel;
@@ -67,7 +74,6 @@ public class PhotoGalleryFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         photoRecyclerView = view.findViewById(R.id.photo_recycler_view);
-        //photoRecyclerView.setLayoutManager(new GridLayoutManager(getContext(), 3)); WAS USED TO SET NUMBER OF COLUMNS. MAY STILL BE NEEDED LATER
 
         photoRecyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
@@ -184,6 +190,17 @@ public class PhotoGalleryFragment extends Fragment {
                 searchItem.collapseActionView();
             }
         });
+
+        MenuItem toggleItem = menu.findItem(R.id.menu_item_toggle_polling);
+        boolean isPolling = QueryPreferences.getInstance().isPolling(requireContext());
+        int toggleItemTitle;
+        if(isPolling){
+           toggleItemTitle = R.string.stop_polling;
+        }
+        else{
+            toggleItemTitle = R.string.start_polling;
+        }
+        toggleItem.setTitle(toggleItemTitle);
     }
 
 
@@ -197,6 +214,24 @@ public class PhotoGalleryFragment extends Fragment {
                 viewModel.fetchPhotos("");
             }
             return true;
+        }
+        if(item.getItemId() == R.id.menu_item_toggle_polling){
+            boolean isPolling = QueryPreferences.getInstance().isPolling(requireContext());
+            if(isPolling){
+                WorkManager.getInstance(requireContext()).cancelUniqueWork(POLL_WORK);
+                QueryPreferences.getInstance().setPolling(requireContext(), false);
+            }
+            else{
+                Constraints constraints = new Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.UNMETERED)
+                        .build();
+                PeriodicWorkRequest periodicRequest = new PeriodicWorkRequest.Builder(PollWorker.class, 30, TimeUnit.MINUTES)
+                        .setConstraints(constraints)
+                        .build();
+                WorkManager.getInstance(requireContext()).enqueueUniquePeriodicWork(POLL_WORK, ExistingPeriodicWorkPolicy.KEEP, periodicRequest);
+                QueryPreferences.getInstance().setPolling(requireContext(), true);
+            }
+            requireActivity().invalidateOptionsMenu();
         }
         return super.onOptionsItemSelected(item);
     }

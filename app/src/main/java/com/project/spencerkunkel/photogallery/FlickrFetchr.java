@@ -30,7 +30,19 @@ public class FlickrFetchr {
     private static final String TAG = "FlickrFetchr";
 
     private final FlickrApi flickrApi;
-    private final PhotoGalleryViewModel viewModel;
+    private PhotoGalleryViewModel viewModel = null;
+
+    public FlickrFetchr() {
+        Gson gson;
+        gson = new GsonBuilder().registerTypeAdapter(PhotoResponse.class, new PhotoDeserializer()).create();
+        OkHttpClient client = new OkHttpClient.Builder().addInterceptor(new PhotoInterceptor()).build();
+
+        Retrofit retrofit = new Retrofit.Builder().baseUrl("https://api.flickr.com/")
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .client(client)
+                .build();
+        flickrApi = retrofit.create(FlickrApi.class);
+    }
 
     public FlickrFetchr(PhotoGalleryViewModel fetchrClass) {
         Gson gson;
@@ -45,12 +57,20 @@ public class FlickrFetchr {
         this.viewModel = fetchrClass;
     }
 
+    public final Call<FlickrResponse> fetchPhotosRequest(int page) {
+        return flickrApi.fetchPhotos(page);
+    }
+
     public LiveData<List<GalleryItem>> fetchPhotos(int page) {
-        return fetchPhotoMetadata(flickrApi.fetchPhotos(page));
+        return fetchPhotoMetadata(fetchPhotosRequest(page));
+    }
+
+    public final Call<FlickrResponse> searchPhotosRequest(String query,int page) {
+        return flickrApi.searchPhotos(query, page);
     }
 
     public LiveData<List<GalleryItem>> searchPhotos(String query, int page) {
-        return fetchPhotoMetadata(flickrApi.searchPhotos(query, page));
+        return fetchPhotoMetadata(searchPhotosRequest(query, page));
     }
 
     private MutableLiveData<List<GalleryItem>> fetchPhotoMetadata(Call<FlickrResponse> flickrRequest) {
