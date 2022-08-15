@@ -10,7 +10,6 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
@@ -24,6 +23,10 @@ import kotlin.collections.CollectionsKt;
 public class PollWorker extends Worker {
 
     private static final String TAG = "Pollworker";
+    protected static final String ACTION_SHOW_NOTIFICATION = "com.project.spencerkunkel.photogallery.SHOW_NOTIFICATION";
+    protected static final String PERM_PRIVATE = "com.project.spencerkunkel.photogallery.PRIVATE";
+    protected static final String REQUEST_CODE = "REQUEST_CODE";
+    protected static final String NOTIFICATION = "NOTIFICATION";
 
     private final Context context;
 
@@ -61,7 +64,7 @@ public class PollWorker extends Worker {
             return Result.success();
         }
 
-        String resultId = ((GalleryItem) CollectionsKt.first(items)).getId();
+        String resultId = CollectionsKt.first(items).getId();
         if(resultId.equals(lastResultId)){
             Log.i(TAG, "Got an old result " + resultId);
         }
@@ -88,9 +91,18 @@ public class PollWorker extends Worker {
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
                     .build();
-            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
-            notificationManager.notify(0,notification);
+
+            showBackgroundNotification(0, notification);
         }
         return Result.success();
     }
+
+    private void showBackgroundNotification(int requestCode, Notification notification) {
+        Intent intent = new Intent(ACTION_SHOW_NOTIFICATION)
+                .putExtra(REQUEST_CODE, requestCode)
+                .putExtra(NOTIFICATION, notification);
+
+        context.sendOrderedBroadcast(intent, PERM_PRIVATE);
+    }
+
 }
