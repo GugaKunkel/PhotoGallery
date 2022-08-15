@@ -4,11 +4,18 @@ import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.drawable.AnimationDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.TypedValue;
-import android.view.*;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import android.widget.SearchView;
 
@@ -18,7 +25,11 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.work.*;
+import androidx.work.Constraints;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.NetworkType;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
@@ -27,6 +38,7 @@ import com.bumptech.glide.request.transition.Transition;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class PhotoGalleryFragment extends VisibleFragment {
@@ -64,7 +76,6 @@ public class PhotoGalleryFragment extends VisibleFragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         photoRecyclerView = view.findViewById(R.id.photo_recycler_view);
-
         photoRecyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
             public void onGlobalLayout() {
@@ -254,7 +265,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
         public void bindLoad(GalleryItem galleryItem) {
             Glide.with(image)
                     .load(galleryItem.getUrl())
-                    .placeholder(R.drawable.bill_up_close)
+                    .thumbnail(Glide.with(requireContext()).load(R.drawable.placeholder_dark))
                     .into(image);
         }
 
@@ -276,7 +287,7 @@ public class PhotoGalleryFragment extends VisibleFragment {
         @NonNull
         @Override
         public PhotoHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            ImageView view = (ImageView) PhotoGalleryFragment.this.getLayoutInflater().inflate(R.layout.list_item_gallery, parent, false);
+            ImageView view = (ImageView) getLayoutInflater().inflate(R.layout.list_item_gallery, parent, false);
             return new PhotoHolder(view);
         }
 

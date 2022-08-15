@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -14,6 +15,7 @@ public class PhotoGalleryActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_photo_gallery);
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
         boolean isFragmentContainerEmpty = savedInstanceState == null;
         if(isFragmentContainerEmpty){
             this.getSupportFragmentManager().beginTransaction().add(R.id.fragmentContainer, PhotoGalleryFragment.newInstance()).commit();

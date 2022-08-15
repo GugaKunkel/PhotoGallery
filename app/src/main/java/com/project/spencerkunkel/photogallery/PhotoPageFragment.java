@@ -22,7 +22,6 @@ public class PhotoPageFragment extends VisibleFragment{
     private static final String ARG_URI = "photo_page_uri";
 
     private Uri uri;
-    private WebView webView;
     private ProgressBar progressBar;
 
     public static PhotoPageFragment newInstance(Uri uri) {
@@ -36,6 +35,7 @@ public class PhotoPageFragment extends VisibleFragment{
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        assert getArguments() != null;
         if(getArguments().getParcelable(ARG_URI) != null){
             uri = getArguments().getParcelable(ARG_URI);
         }
@@ -53,7 +53,7 @@ public class PhotoPageFragment extends VisibleFragment{
         progressBar = view.findViewById(R.id.progress_bar);
         progressBar.setMax(100);
 
-        webView = view.findViewById(R.id.web_view);
+        WebView webView = view.findViewById(R.id.web_view);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.setWebChromeClient(new WebChromeClient() {
             @Override

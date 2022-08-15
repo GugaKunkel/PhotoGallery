@@ -9,6 +9,7 @@
         <entry key="app/src/main/res/layout/fragment_photo_gallery.xml" value="0.2552083333333333" />
         <entry key="app/src/main/res/layout/fragment_photo_page.xml" value="0.14990942028985507" />
         <entry key="app/src/main/res/layout/list_item_gallery.xml" value="0.25364583333333335" />
+        <entry key="app/src/main/res/layout/shimmer_load.xml" value="0.14990942028985507" />
         <entry key="app/src/main/res/menu/fragment_photo_gallery.xml" value="0.25364583333333335" />
       </map>
     </option>

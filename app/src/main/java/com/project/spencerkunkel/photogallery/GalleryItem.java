@@ -5,16 +5,14 @@ import android.net.Uri;
 
 import com.google.gson.annotations.SerializedName;
 
-import kotlin.jvm.internal.Intrinsics;
-
 public class GalleryItem {
 
     private String title;
     private String id;
     @SerializedName("url_s")
-    private String url;
+    private final String url;
     @SerializedName("owner")
-    private String owner;
+    private final String owner;
 
     public GalleryItem(String title, String id, String url, String owner) {
         this.title = title;
@@ -51,7 +49,4 @@ public class GalleryItem {
         return this.url;
     }
 
-    public final void setUrl(String url) {
-        this.url = url;
-    }
 }
