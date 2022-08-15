@@ -1,10 +1,10 @@
 package com.project.spencerkunkel.photogallery;
 
 import android.annotation.SuppressLint;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.drawable.AnimationDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
@@ -18,9 +18,11 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import android.widget.SearchView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -38,7 +40,6 @@ import com.bumptech.glide.request.transition.Transition;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class PhotoGalleryFragment extends VisibleFragment {
@@ -151,6 +152,9 @@ public class PhotoGalleryFragment extends VisibleFragment {
             else{
                 adapter = new PhotoAdapter(galleryItems);
                 photoRecyclerView.setAdapter(adapter);
+                if(galleryItems.size() == 0){
+                    Toast.makeText(requireContext(),"Your search returned no results", Toast.LENGTH_LONG).show();
+                }
             }
             items.clear();
             items.addAll(galleryItems);
