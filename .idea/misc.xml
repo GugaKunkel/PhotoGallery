@@ -5,7 +5,9 @@
       <map>
         <entry key="../../../../../layout/custom_preview.xml" value="0.13541666666666666" />
         <entry key="app/src/main/res/layout/activity_photo_gallery.xml" value="0.2552083333333333" />
+        <entry key="app/src/main/res/layout/activity_photo_page.xml" value="0.12239583333333333" />
         <entry key="app/src/main/res/layout/fragment_photo_gallery.xml" value="0.2552083333333333" />
+        <entry key="app/src/main/res/layout/fragment_photo_page.xml" value="0.14990942028985507" />
         <entry key="app/src/main/res/layout/list_item_gallery.xml" value="0.25364583333333335" />
         <entry key="app/src/main/res/menu/fragment_photo_gallery.xml" value="0.25364583333333335" />
       </map>

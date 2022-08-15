@@ -2,18 +2,13 @@ package com.project.spencerkunkel.photogallery;
 
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.TypedValue;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
+import android.view.*;
 import android.widget.ImageView;
 import android.widget.SearchView;
 
@@ -23,11 +18,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.work.Constraints;
-import androidx.work.ExistingPeriodicWorkPolicy;
-import androidx.work.NetworkType;
-import androidx.work.PeriodicWorkRequest;
-import androidx.work.WorkManager;
+import androidx.work.*;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
@@ -241,13 +232,19 @@ public class PhotoGalleryFragment extends VisibleFragment {
         beenRotated = true;
     }
 
-    private static class PhotoHolder extends RecyclerView.ViewHolder {
+    private class PhotoHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
 
         private final ImageView image;
+        private GalleryItem galleryItem;
 
         public PhotoHolder(@NonNull ImageView itemImage) {
             super(itemImage);
             this.image = itemImage;
+            itemImage.setOnClickListener(this);
+        }
+
+        public final void bindGalleryItem(GalleryItem item) {
+            this.galleryItem = item;
         }
 
         public void bindCache(Bitmap photo) {
@@ -259,6 +256,12 @@ public class PhotoGalleryFragment extends VisibleFragment {
                     .load(galleryItem.getUrl())
                     .placeholder(R.drawable.bill_up_close)
                     .into(image);
+        }
+
+        @Override
+        public void onClick(View view) {
+            Intent intent = PhotoPageActivity.newIntent(requireContext(), galleryItem.getPhotoPageUri());
+            startActivity(intent);
         }
     }
 
@@ -279,7 +282,9 @@ public class PhotoGalleryFragment extends VisibleFragment {
 
         @Override
         public void onBindViewHolder(@NonNull PhotoHolder holder, int position) {
-            Bitmap image = photoGalleryViewModel.getCache().get(galleryItems.get(position).getUrl());
+            GalleryItem galleryItem = galleryItems.get(position);
+            holder.bindGalleryItem(galleryItem);
+            Bitmap image = photoGalleryViewModel.getCache().get(galleryItem.getUrl());
             if(image != null && !image.isRecycled()){
                 holder.bindCache(image);
             }

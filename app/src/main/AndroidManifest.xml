@@ -25,6 +25,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".PhotoPageActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"/>
         <receiver android:name=".NotificationReceiver"
             android:permission="com.project.spencerkunkel.photogallery.PRIVATE"
             android:exported="false">
