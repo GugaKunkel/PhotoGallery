@@ -20,6 +20,7 @@ public interface FlickrApi {
             "&format=json" +
             "&nojsoncallback=1" +
             "&extras=url_s" +
-            "&safesearch=1")
+            "&safesearch=1" +
+            "&sort=relevance")
     Call<FlickrResponse> searchPhotos(@Query("text") String query, @Query("page") int page);
 }
